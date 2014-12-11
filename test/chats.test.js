@@ -1,14 +1,20 @@
 var assert = require('assert'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSApp = require('../index'),
+	acsApp = new ACSApp(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername_1 = null,
 	acsPassword = 'cocoafish',
 	acsUsername_2 = null,
@@ -46,7 +52,6 @@ describe('Chats Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_1);
-				assert(result.cookieString);
 				acsUser1_id = obj.id;
 				done();
 			});
@@ -65,14 +70,12 @@ describe('Chats Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_2);
-				assert(result.cookieString);
 				done();
 			});
 		});
 	});
 
-	describe('Positive chats tests', function() {
-
+	describe('positive chats tests', function() {
 		it('User 2 should be able to login successfully', function(done) {
 			acsApp.usersLogin({
 				login: acsUsername_2,
@@ -85,10 +88,6 @@ describe('Chats Test', function() {
 				assert.equal(result.body.meta.method_name, 'loginUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_2);
-				assert(result.cookieString);
-				assert.equal(typeof result.cookieString, 'string');
-				acsApp.setSessionByCookieString(result.cookieString);
-				assert.equal(result.cookieString, acsApp.appOptions.cookieString);
 				done();
 			});
 		});
@@ -106,7 +105,6 @@ describe('Chats Test', function() {
 				assert.equal(result.body.meta.method_name, 'createChatMessage');
 				var obj = result.body.response.chats[0];
 				assert.equal(obj.message, message);
-				assert(result.cookieString);
 				chat_group_id = obj.chat_group.id;
 				chat_id = obj.id;
 				done();
@@ -140,7 +138,6 @@ describe('Chats Test', function() {
 				assert.equal(result.body.meta.method_name, 'queryChatMessages');
 				var obj = result.body.response.chats[0];
 				assert.equal(obj.message, message);
-				assert(result.cookieString);
 				done();
 			});
 		});
@@ -156,7 +153,6 @@ describe('Chats Test', function() {
 				assert.equal(result.body.meta.method_name, 'getChatGroups');
 				var obj = result.body.response.chat_groups[0];
 				assert.equal(obj.message, message);
-				assert(result.cookieString);
 				done();
 			});
 		});
@@ -164,11 +160,9 @@ describe('Chats Test', function() {
 		it('Should fail to query chat groups - query_chat_groups', function(done) {
 			acsApp.chatsQueryChatGroups({
 
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 403);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 403);
 				done();
 			});
 		});
@@ -198,8 +192,7 @@ describe('Chats Test', function() {
 		});
 	});
 
-	describe('Negative chats tests', function() {
-
+	describe('negative chats tests', function() {
 		it('User 2 should be able to login successfully', function(done) {
 			acsApp.usersLogin({
 				login: acsUsername_2,
@@ -212,10 +205,6 @@ describe('Chats Test', function() {
 				assert.equal(result.body.meta.method_name, 'loginUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_2);
-				assert(result.cookieString);
-				assert.equal(typeof result.cookieString, 'string');
-				acsApp.setSessionByCookieString(result.cookieString);
-				assert.equal(result.cookieString, acsApp.appOptions.cookieString);
 				done();
 			});
 		});
@@ -224,19 +213,15 @@ describe('Chats Test', function() {
 			acsApp.chatsCreate({
 				//                to_ids: acsUser1_id,
 				message: message
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Required field: to_ids or chat_group_id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
 	});
 
 	describe('cleanup', function() {
-
 		it('Should delete current user successfully', function(done) {
 			acsApp.usersRemove(function(err, result) {
 				assert.ifError(err);

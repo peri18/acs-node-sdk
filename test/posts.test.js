@@ -2,21 +2,26 @@ var assert = require('assert'),
 	fs = require('fs'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSApp = require('../index'),
+	acsApp = new ACSApp(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	event_id = null,
 	post_id = null,
 	photo_id = null,
 	content = 'ACS, awesome product!';
-
 
 describe('Posts Test', function() {
 	this.timeout(50000);
@@ -42,9 +47,15 @@ describe('Posts Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 
@@ -219,12 +230,10 @@ describe('Posts Test', function() {
 		it('Should fail to create a post without content', function(done) {
 			acsApp.postsCreate({
 				event_id: event_id
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Failed to create post: Validation failed - Content can\'t be blank.');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Failed to create post: Validation failed - Content can\'t be blank.');
 				done();
 			});
 		});
@@ -237,12 +246,10 @@ describe('Posts Test', function() {
 				custom_fields: {
 					city: 'shanghai'
 				}
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid post id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid post id');
 				done();
 			});
 		});
@@ -281,12 +288,10 @@ describe('Posts Test', function() {
 		});
 
 		it('Should delte a batch posts successfully', function(done) {
-			acsApp.postsBatchDelete({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 403);
-				assert.equal(result.body.meta.message, 'You are not authorized to perform this action.');
+			acsApp.postsBatchDelete({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 403);
+				assert.equal(err.body.meta.message, 'You are not authorized to perform this action.');
 				done();
 			});
 		});

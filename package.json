@@ -23,6 +23,9 @@
 	}, {
 		"name": "Kefeng Zhang",
 		"email": "kzhang@appcelerator.com"
+	}, {
+		"name": "Chris Barber",
+		"email": "cbarber@appcelerator.com"
 	}],
 	"repository": {
 		"type": "git",

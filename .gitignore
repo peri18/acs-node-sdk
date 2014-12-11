@@ -1,9 +1,11 @@
 # General
 *.swp
+.DS_Store
+._*
 
 # NodeJS
 node_modules
+npm-debug.log
 
 # Travis-ci
 coverage
-

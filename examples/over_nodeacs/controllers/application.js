@@ -1,8 +1,10 @@
 var u = require('../lib/util');
 
+var ACSApp = require('../../../index');
+
 var acsAppKey = u.getConfig().acs_appkey;
 if (acsAppKey) {
-	var acsApp = require('../../../index')(acsAppKey);
+	var acsApp = new ACSApp(acsAppKey);
 }
 
 function index(req, res) {

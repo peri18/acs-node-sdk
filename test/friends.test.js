@@ -1,19 +1,29 @@
 var assert = require('assert'),
 	testUtil = require('./testUtil');
 
-var acsApp = testUtil.getTestACSApp(),
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
+var acsKey = process.env.ACS_APPKEY;
+if (!acsKey) {
+	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
+	process.exit(1);
+}
+console.log('ACS Entry Point: %s', acsEntryPoint);
+console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
+
+var ACSApp = require('../index'),
+	acsApp = new ACSApp(acsKey),
+	acsAppFriend = new ACSApp(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsUserId,
 	acsPassword = 'cocoafish',
-	acsCookieString,
 	acsFriendUsername,
-	acsFriendUserId,
-	acsFriendCookieString;
-
+	acsFriendUserId;
 
 describe('Friends Test', function() {
 	before(function(done) {
-		acsApp.clearSession();
 		testUtil.generateUsername(function(username) {
 			acsUsername = username;
 			acsFriendUsername = acsUsername + '_friend';
@@ -25,7 +35,7 @@ describe('Friends Test', function() {
 	describe('.createUser', function() {
 		it('Should create user as friend successfully', function(done) {
 			this.timeout(20000);
-			acsApp.usersCreate({
+			acsAppFriend.usersCreate({
 				username: acsFriendUsername,
 				password: acsPassword,
 				password_confirmation: acsPassword
@@ -41,9 +51,15 @@ describe('Friends Test', function() {
 				assert.equal(result.body.response.users[0].username, acsFriendUsername);
 				assert(result.body.response.users[0].id);
 				acsFriendUserId = result.body.response.users[0].id;
-				assert(result.cookieString);
-				acsFriendCookieString = result.cookieString;
-				done();
+
+				acsAppFriend.usersLogin({
+					login: acsFriendUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 
@@ -65,10 +81,15 @@ describe('Friends Test', function() {
 				assert.equal(result.body.response.users[0].username, acsUsername);
 				assert(result.body.response.users[0].id);
 				acsUserId = result.body.response.users[0].id;
-				assert(result.cookieString);
-				acsCookieString = result.cookieString;
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 	});
@@ -93,9 +114,7 @@ describe('Friends Test', function() {
 	describe('.viewAndApproveFriends', function() {
 		it('Should show pending friend successfully', function(done) {
 			this.timeout(20000);
-			acsApp.setSessionByCookieString(acsFriendCookieString);
-			acsApp.friendsRequests(function(err, result) {
-				acsApp.setSessionByCookieString(acsCookieString);
+			acsAppFriend.friendsRequests(function(err, result) {
 				assert.ifError(err);
 				assert(result);
 				assert(result.body);
@@ -115,11 +134,9 @@ describe('Friends Test', function() {
 
 		it('Should approve pending friend successfully', function(done) {
 			this.timeout(20000);
-			acsApp.setSessionByCookieString(acsFriendCookieString);
-			acsApp.friendsApprove({
+			acsAppFriend.friendsApprove({
 				user_ids: acsUserId
 			}, function(err, result) {
-				acsApp.setSessionByCookieString(acsCookieString);
 				assert.ifError(err);
 				assert(result);
 				assert(result.body);
@@ -221,8 +238,7 @@ describe('Friends Test', function() {
 
 		it('Should delete friend successfully', function(done) {
 			this.timeout(20000);
-			acsApp.setSessionByCookieString(acsFriendCookieString);
-			acsApp.usersRemove(function(err, result) {
+			acsAppFriend.usersRemove(function(err, result) {
 				assert.ifError(err);
 				assert(result);
 				assert(result.body);

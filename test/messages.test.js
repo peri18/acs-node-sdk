@@ -1,14 +1,20 @@
 var assert = require('assert'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSApp = require('../index'),
+	acsApp = new ACSApp(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername_1 = null,
 	acsPassword = 'cocoafish',
 	acsUsername_2 = null,
@@ -48,7 +54,6 @@ describe('Messages Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_1);
-				assert(result.cookieString);
 				acsUser1_id = obj.id;
 				done();
 			});
@@ -67,14 +72,12 @@ describe('Messages Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_2);
-				assert(result.cookieString);
 				done();
 			});
 		});
 	});
 
 	describe('Positive messages tests', function() {
-
 		it('User 2 should be able to login successfully', function(done) {
 			acsApp.usersLogin({
 				login: acsUsername_2,
@@ -87,11 +90,15 @@ describe('Messages Test', function() {
 				assert.equal(result.body.meta.method_name, 'loginUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_2);
-				assert(result.cookieString);
-				assert.equal(typeof result.cookieString, 'string');
-				acsApp.setSessionByCookieString(result.cookieString);
-				assert.equal(result.cookieString, acsApp.appOptions.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername_2,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 
@@ -188,10 +195,6 @@ describe('Messages Test', function() {
 				assert.equal(result.body.meta.method_name, 'loginUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername_1);
-				assert(result.cookieString);
-				assert.equal(typeof result.cookieString, 'string');
-				acsApp.setSessionByCookieString(result.cookieString);
-				assert.equal(result.cookieString, acsApp.appOptions.cookieString);
 				done();
 			});
 		});
@@ -271,18 +274,15 @@ describe('Messages Test', function() {
 	});
 
 	describe('Negative messages tests', function() {
-
 		it('Should fail to send message to user 1 without body', function(done) {
 			acsApp.messagesReply({
 				message_id: message_id
-			}, function(err, result) {
+			}, function(err) {
 				//                assert.equal(err !== undefined, true);
 				//                assert.equal(err.message, 'Required parameter body is missing.');
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'replyMessage');
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.method_name, 'replyMessage');
 				done();
 			});
 		});
@@ -290,14 +290,12 @@ describe('Messages Test', function() {
 		it('Should fail to send message to user 1 without message_id', function(done) {
 			acsApp.messagesReply({
 				body: body
-			}, function(err, result) {
+			}, function(err) {
 				//                assert.equal(err !== undefined, true);
 				//                assert.equal(err.message, 'Required parameter message_id is missing.');
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'replyMessage');
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.method_name, 'replyMessage');
 				done();
 			});
 		});
@@ -306,23 +304,19 @@ describe('Messages Test', function() {
 			acsApp.messagesCreate({
 				to_ids: acsUser1_id,
 				subject: subject
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Failed to send message: Validation failed - Body can\'t be blank.');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Failed to send message: Validation failed - Body can\'t be blank.');
 				done();
 			});
 		});
 
 		it('Should fail to show a message without message_id', function(done) {
-			acsApp.messagesShow({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Required field: message_id');
+			acsApp.messagesShow({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Required field: message_id');
 				done();
 			});
 		});
@@ -330,25 +324,21 @@ describe('Messages Test', function() {
 		it('Should reply a message to user 2 successfully', function(done) {
 			acsApp.messagesReply({
 				message_id: message_id
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'replyMessage');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.method_name, 'replyMessage');
 				done();
 			});
 		});
 
 		it('Should fail delete a thread without thread_id', function(done) {
-			acsApp.messagesDeleteThread({}, function(err, result) {
+			acsApp.messagesDeleteThread({}, function(err) {
 				//                assert.equal(err !== undefined, true);
 				//                assert.equal(err.message, 'Required parameter thread_id is missing.');
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'deleteMessageThread');
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.method_name, 'deleteMessageThread');
 				done();
 			});
 		});
@@ -359,12 +349,10 @@ describe('Messages Test', function() {
 		it('Should delete a message successfully', function(done) {
 			acsApp.messagesDelete({
 				message_id: message_id
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'deleteMessage');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.method_name, 'deleteMessage');
 				done();
 			});
 		});

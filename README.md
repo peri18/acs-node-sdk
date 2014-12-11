@@ -7,8 +7,6 @@ The SDK of ACS for NodeJS
 git clone git@github.com:realpaul/acs-node-sdk.git
 cd acs-node-sdk
 npm install
-export ACS_APPKEY=ONE_OF_YOUR_ACS_TEST_APPKEY
-npm test
 ```
 
 ## Basic Example
@@ -41,13 +39,15 @@ curl -b cookie.txt -c cookie.txt -X GET http://localhost:8080/showMe
 # ACS Node SDK Basic Usage
 ## Use ACS Node SDK directly
 ```javascript
-var acsApp = require('acs-node')('Your_ACS_APPKEY');
+var ACSApp = require('acs-node');
+var myacsApp = new ACSApp('Your_ACS_APPKEY');
+
 // Cookie string can be passed into too
 // var acsApp = require('acs-node')('Your_ACS_APPKEY', {
 //     apiEntryPoint: 'https://api.cloud.appcelerator.com',
 //     cookieString: req.session.cookieString
 // });
-acsApp.usersLogin({
+myacsApp.usersLogin({
     login: ACS_USERNAME,
     password: ACS_PASSWORD
 }, function(err, result) {
@@ -56,8 +56,8 @@ acsApp.usersLogin({
         return;
     }
     console.log('Logged in user: %j', result.body);
-    acsApp.setSessionByCookieString(result.cookieString);
-    acsApp.usersShowMe(function(err, result) {
+    myacsApp.setSessionByCookieString(result.cookieString);
+    myacsApp.usersShowMe(function(err, result) {
         if (err) {
             console.error(err);
             return;
@@ -70,8 +70,10 @@ acsApp.usersLogin({
 ## Use ACS Node SDK inner express or http/https NodeJS module
 ```javascript
 // HTTP call 1 with cookie:
-var acsApp = require('acs-node')('Your_ACS_APPKEY');
-acsApp.usersLogin(ACS_APPKEY, {
+var ACSApp = require('acs-node');
+var myacsApp = new ACSApp('Your_ACS_APPKEY');
+
+myacsApp.usersLogin(ACS_APPKEY, {
     login: req.body.login,
     password: req.body.password,
     req: req,
@@ -85,8 +87,10 @@ acsApp.usersLogin(ACS_APPKEY, {
 });
 
 // HTTP call 2 with cookie, after HTTP call 1:
-var acsApp = require('acs-node')('Your_ACS_APPKEY');
-acsApp.usersShowMe(ACS_APPKEY, {
+var ACSApp = require('acs-node');
+var myacsApp = new ACSApp('Your_ACS_APPKEY');
+
+myacsApp.usersShowMe(ACS_APPKEY, {
     req: req,
     res: res
 }, function(err, result) {
@@ -100,8 +104,10 @@ acsApp.usersShowMe(ACS_APPKEY, {
 
 ## General RestAPI call
 ```javascript
-var acsApp = require('acs-node')('Your_ACS_APPKEY');
-acsApp.post(ACS_APPKEY, '/v1/users/login.json', {
+var ACSApp = require('acs-node');
+var myacsApp = new ACSApp('Your_ACS_APPKEY');
+
+myacsApp.post(ACS_APPKEY, '/v1/users/login.json', {
     login: ACS_USERNAME,
     password: ACS_PASSWORD
 }, function(err, result) {
@@ -111,8 +117,8 @@ acsApp.post(ACS_APPKEY, '/v1/users/login.json', {
     }
     console.log('ACS returned body: %j', result.body);
     console.log('Cookie string returned: %s', result.cookieString);
-    acsApp.setSessionByCookieString(result.cookieString);
-    acsApp.get(ACS_APPKEY, '/v1/users/show/me.json', function(err, result) {
+    myacsApp.setSessionByCookieString(result.cookieString);
+    myacsApp.get(ACS_APPKEY, '/v1/users/show/me.json', function(err, result) {
         if (err) {
             console.error(err);
             return;
@@ -121,3 +127,19 @@ acsApp.post(ACS_APPKEY, '/v1/users/login.json', {
     });
 });
 ```
+
+## Running Unit Tests
+
+To run the unit tests, simply run:
+
+    export ACS_APPKEY=ONE_OF_YOUR_ACS_TEST_APPKEY
+    npm test
+
+## License
+
+This project is open source and provided under the Apache Public License
+(version 2). Please make sure you see the `LICENSE` file included in this
+distribution for more details on the license.  Also, please take notice of the
+privacy notice at the end of the file.
+
+#### (C) Copyright 2012-2014, [Appcelerator](http://www.appcelerator.com/) Inc. All Rights Reserved.

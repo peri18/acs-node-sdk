@@ -2,14 +2,20 @@ var assert = require('assert'),
 	testUtil = require('./testUtil'),
 	fs = require('fs');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSApp = require('../index'),
+	acsApp = new ACSApp(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	acsReviewCount = 0,
@@ -64,7 +70,6 @@ describe('Reviews Test', function() {
 			assert(result.body.response.users[0]);
 			assert.equal(result.body.response.users[0].username, acsUsername);
 			acsUserId = result.body.response.users[0].id;
-			assert(result.cookieString);
 			done();
 		});
 	});
@@ -83,10 +88,6 @@ describe('Reviews Test', function() {
 			assert(result.body.response.users);
 			assert(result.body.response.users[0]);
 			assert.equal(result.body.response.users[0].username, acsUsername);
-			assert(result.cookieString);
-			assert.equal(typeof result.cookieString, 'string');
-			acsApp.setSessionByCookieString(result.cookieString);
-			assert.equal(result.cookieString, acsApp.appOptions.cookieString);
 			done();
 		});
 	});
@@ -242,10 +243,10 @@ describe('Reviews Test', function() {
 
 	describe('Negative test', function() {
 		it('create without passing object_id field', function(done) {
-			acsApp.reviewsCreate({}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid review type');
+			acsApp.reviewsCreate({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid review type');
 				done();
 			});
 		});
@@ -253,10 +254,10 @@ describe('Reviews Test', function() {
 		it('show using invalid review id', function(done) {
 			acsApp.reviewsShow({
 				review_id: 'invalid'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid review id(s)');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid review id(s)');
 				done();
 			});
 		});
@@ -264,10 +265,10 @@ describe('Reviews Test', function() {
 		it('update using invalid review id', function(done) {
 			acsApp.reviewsUpdate({
 				review_id: 'invalid'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid review type');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid review type');
 				done();
 			});
 		});
@@ -275,10 +276,10 @@ describe('Reviews Test', function() {
 		it('delete using invalid review id', function(done) {
 			acsApp.reviewsRemove({
 				review_id: 'invalid'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid review id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid review id');
 				done();
 			});
 		});

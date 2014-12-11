@@ -4,26 +4,23 @@ if (!process.env.ACS_APPKEY) {
 	process.exit(1);
 }
 
-console.log('Creating ACS app instance...'.cyan);
-var acsApp = require('../lib/acs')(process.env.ACS_APPKEY);
-// Cookie string can be passed into too
-// var acsApp = require('../lib/acs')(process.env.ACS_APPKEY, {
-//     apiEntryPoint: process.env.ACS_ENTRYPOINT
-//     cookieString: req.session.cookieString
-// });
-console.log('Created: '.cyan + '%j', acsApp);
+var ACSApp = require('../lib/acs');
 
-var acsObjectList = acsApp.getACSCollection().objectList;
-console.log('Get all supported objects: acsApp.getACSCollection().objectList'.cyan);
+console.log('Creating ACS app instance...'.cyan);
+var myacsApp = new ACSApp(process.env.ACS_APPKEY);
+console.log('Created: '.cyan + '%j', myacsApp);
+
+var acsObjectList = myacsApp.getACSObjects().objectList;
+console.log('Get all supported objects: myacsApp.getACSObjects().objectList'.cyan);
 console.log(acsObjectList);
 for (var acsObjectIndex in acsObjectList) {
 	var acsObjectName = acsObjectList[acsObjectIndex];
-	console.log('Get all methods in objects %s: acsApp.getACSCollection().%s.methodList'.cyan, acsObjectName, acsObjectName);
-	console.log(acsApp.getACSCollection()[acsObjectName].methodList);
+	console.log('Get all methods in objects %s: myacsApp.getACSObjects().%s.methodList'.cyan, acsObjectName, acsObjectName);
+	console.log(myacsApp.getACSObjects()[acsObjectName].methodList);
 }
 
-console.log('User loging in...'.cyan);
-acsApp.usersLogin({
+console.log('User logging in...'.cyan);
+myacsApp.usersLogin({
 	login: 'test@cocoa.com',
 	password: 'food'
 }, function(err, result) {
@@ -32,11 +29,7 @@ acsApp.usersLogin({
 		return;
 	}
 	console.log('User login request finished: '.cyan + '%j', result.body);
-	var cookieString = result.cookieString;
-	console.log('Cookie string: '.cyan + cookieString);
-	acsApp.setSessionByCookieString(cookieString);
-	console.log('Cookie string has been stored into instance \'acsApp\': '.cyan + '%j', acsApp);
-	console.log('Counting users via generic way acsApp.get() instead of acsApp.usersCount()...'.cyan);
+	console.log('Counting users via generic way myacsApp.get() instead of myacsApp.usersCount()...'.cyan);
 	var user1_id = '544f958ddda0951c57000007';
 	createChat(user1_id, function(err, result) {
 		if (err) {
@@ -46,7 +39,7 @@ acsApp.usersLogin({
 		console.log('Chat create request finished: '.cyan + '%j', result.body);
 		//            var chat_id = result.body['response']['chats'][0].id
 
-		acsApp.chatsGetChatGroups({
+		myacsApp.chatsGetChatGroups({
 			participate_ids: '544f958ddda0951c57000227'
 		}, function(err, result) {
 			if (err) {
@@ -57,7 +50,7 @@ acsApp.usersLogin({
 		});
 
 
-		//        acsApp.chatsQuery({participate_ids: user1_id},function(err, result){
+		//        myacsApp.chatsQuery({participate_ids: user1_id},function(err, result){
 		//            if (err) {
 		//                console.error(err);
 		//                return;
@@ -66,7 +59,7 @@ acsApp.usersLogin({
 		//        });
 
 
-		//            acsApp.chatsQueryChatGroups({order: "updated_at"},function(err, result){
+		//            myacsApp.chatsQueryChatGroups({order: "updated_at"},function(err, result){
 		//                if (err) {
 		//                    console.error(err);
 		//                    return;
@@ -87,19 +80,19 @@ acsApp.usersLogin({
 });
 
 function createChat(to_ids, callback) {
-	acsApp.chatsCreate({
+	myacsApp.chatsCreate({
 		to_ids: to_ids,
 		message: "test"
 	}, callback);
 }
 
 function deleteChat(chat_id, callback) {
-	acsApp.chatsDelete({
+	myacsApp.chatsDelete({
 		chat_id: chat_id
 	}, callback);
 }
 
 function getChatGroups(query, callback) {
-		acsApp.chatsGetChatGroups(query, callback);
-	}
-	//544f958ddda0951c57000007  test1
+	myacsApp.chatsGetChatGroups(query, callback);
+}
+//544f958ddda0951c57000007  test1

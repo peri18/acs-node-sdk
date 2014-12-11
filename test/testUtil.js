@@ -1,4 +1,5 @@
-var crypto = require('crypto'),
+var ACSApp = require('../index'),
+	crypto = require('crypto'),
 	testACSApp = null;
 
 var generateUsername = function(callback) {
@@ -77,7 +78,7 @@ function getTestACSApp() {
 		console.log('ACS Entry Point: %s', acsEntryPoint);
 		console.log('MD5 of ACS_APPKEY: %s', md5(acsKey));
 
-		testACSApp = require('../index')(acsKey, {
+		testACSApp = new ACSApp(acsKey, {
 			apiEntryPoint: acsEntryPoint,
 			prettyJson: true
 		});

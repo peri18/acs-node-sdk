@@ -1,22 +1,46 @@
-var assert = require('assert'),
+var ACSApp = require('../index'),
+	assert = require('assert'),
 	testUtil = require('./testUtil');
 
-var acsApp = testUtil.getTestACSApp(),
-	acsUsername = null,
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
+var acsKey = process.env.ACS_APPKEY;
+if (!acsKey) {
+	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
+	process.exit(1);
+}
+console.log('ACS Entry Point: %s', acsEntryPoint);
+console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
+
+var acsUsername = null,
 	acsPassword = 'cocoafish',
+
 	acsReaderUsername,
 	acsReaderUserId,
-	acsReaderCookieString,
+
 	acsWriterUsername,
 	acsWriterUserId,
-	acsWriterCookieString,
+
 	acsACLName = 'aclTest',
 	acsACLsCount = 0;
 
 
 describe('ACLs Test', function() {
 	before(function(done) {
-		acsApp.clearSession();
+		this.acsAppGeneral = new ACSApp(acsKey, {
+			apiEntryPoint: acsEntryPoint,
+			prettyJson: true
+		});
+
+		this.acsAppReader = new ACSApp(acsKey, {
+			apiEntryPoint: acsEntryPoint,
+			prettyJson: true
+		});
+
+		this.acsAppWriter = new ACSApp(acsKey, {
+			apiEntryPoint: acsEntryPoint,
+			prettyJson: true
+		});
+
 		testUtil.generateUsername(function(username) {
 			acsUsername = username;
 			acsReaderUsername = acsUsername + '_reader';
@@ -29,7 +53,7 @@ describe('ACLs Test', function() {
 	describe('.createUser', function() {
 		it('Should create user as ACL reader successfully', function(done) {
 			this.timeout(20000);
-			acsApp.usersCreate({
+			this.acsAppReader.usersCreate({
 				username: acsReaderUsername,
 				password: acsPassword,
 				password_confirmation: acsPassword
@@ -45,15 +69,21 @@ describe('ACLs Test', function() {
 				assert.equal(result.body.response.users[0].username, acsReaderUsername);
 				assert(result.body.response.users[0].id);
 				acsReaderUserId = result.body.response.users[0].id;
-				assert(result.cookieString);
-				acsReaderCookieString = result.cookieString;
-				done();
-			});
+
+				this.acsAppReader.usersLogin({
+					login: acsReaderUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
+			}.bind(this));
 		});
 
 		it('Should create user as ACL writer successfully', function(done) {
 			this.timeout(20000);
-			acsApp.usersCreate({
+			this.acsAppWriter.usersCreate({
 				username: acsWriterUsername,
 				password: acsPassword,
 				password_confirmation: acsPassword
@@ -69,15 +99,21 @@ describe('ACLs Test', function() {
 				assert.equal(result.body.response.users[0].username, acsWriterUsername);
 				assert(result.body.response.users[0].id);
 				acsWriterUserId = result.body.response.users[0].id;
-				assert(result.cookieString);
-				acsWriterCookieString = result.cookieString;
-				done();
-			});
+
+				this.acsAppWriter.usersLogin({
+					login: acsWriterUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
+			}.bind(this));
 		});
 
 		it('Should create general user successfully', function(done) {
 			this.timeout(20000);
-			acsApp.usersCreate({
+			this.acsAppGeneral.usersCreate({
 				username: acsUsername,
 				password: acsPassword,
 				password_confirmation: acsPassword
@@ -91,17 +127,23 @@ describe('ACLs Test', function() {
 				assert(result.body.response.users);
 				assert(result.body.response.users[0]);
 				assert.equal(result.body.response.users[0].username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
-			});
+
+				this.acsAppGeneral.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
+			}.bind(this));
 		});
 	});
 
 	describe('.queryAndCountACLs', function() {
 		it('Should return all ACLs', function(done) {
 			this.timeout(20000);
-			acsApp.aclsQuery({
+			this.acsAppGeneral.aclsQuery({
 				limit: 100
 			}, function(err, result) {
 				assert.ifError(err);
@@ -120,7 +162,7 @@ describe('ACLs Test', function() {
 
 		it('Should return the correct ACL number as queried before', function(done) {
 			this.timeout(20000);
-			acsApp.aclsCount(function(err, result) {
+			this.acsAppGeneral.aclsCount(function(err, result) {
 				assert.ifError(err);
 				assert(result.body);
 				assert(result.body.meta);
@@ -137,7 +179,7 @@ describe('ACLs Test', function() {
 	describe('.addACL', function() {
 		it('Should add ACL successfully', function(done) {
 			this.timeout(20000);
-			acsApp.aclsAddUser({
+			this.acsAppGeneral.aclsAddUser({
 				name: acsACLName,
 				reader_ids: acsReaderUserId,
 				writer_ids: acsWriterUserId
@@ -157,7 +199,7 @@ describe('ACLs Test', function() {
 
 		it('ACLs count should be increased', function(done) {
 			this.timeout(20000);
-			acsApp.aclsCount(function(err, result) {
+			this.acsAppGeneral.aclsCount(function(err, result) {
 				assert.ifError(err);
 				assert(result.body);
 				assert(result.body.meta);
@@ -173,7 +215,7 @@ describe('ACLs Test', function() {
 
 		it('Should query ACL correctly', function(done) {
 			this.timeout(20000);
-			acsApp.aclsQuery({
+			this.acsAppGeneral.aclsQuery({
 				where: {
 					name: acsACLName
 				}
@@ -195,7 +237,7 @@ describe('ACLs Test', function() {
 	describe('.checkACL', function() {
 		it('Should check ACL successfully', function(done) {
 			this.timeout(20000);
-			acsApp.aclsCheckUser({
+			this.acsAppGeneral.aclsCheckUser({
 				name: acsACLName,
 				user_id: acsWriterUserId
 			}, function(err, result) {
@@ -216,7 +258,7 @@ describe('ACLs Test', function() {
 	describe('.removeACL', function() {
 		it('Should check ACL successfully', function(done) {
 			this.timeout(20000);
-			acsApp.aclsRemove({
+			this.acsAppGeneral.aclsRemove({
 				name: acsACLName
 			}, function(err, result) {
 				assert.ifError(err);
@@ -232,7 +274,7 @@ describe('ACLs Test', function() {
 	describe('.deleteUser', function() {
 		it('Should delete current user successfully', function(done) {
 			this.timeout(20000);
-			acsApp.usersRemove(function(err, result) {
+			this.acsAppGeneral.usersRemove(function(err, result) {
 				assert.ifError(err);
 				assert(result);
 				assert(result.body);
@@ -245,8 +287,7 @@ describe('ACLs Test', function() {
 
 		it('Should delete reader successfully', function(done) {
 			this.timeout(20000);
-			acsApp.setSessionByCookieString(acsReaderCookieString);
-			acsApp.usersRemove(function(err, result) {
+			this.acsAppReader.usersRemove(function(err, result) {
 				assert.ifError(err);
 				assert(result);
 				assert(result.body);
@@ -259,8 +300,7 @@ describe('ACLs Test', function() {
 
 		it('Should delete writer successfully', function(done) {
 			this.timeout(20000);
-			acsApp.setSessionByCookieString(acsWriterCookieString);
-			acsApp.usersRemove(function(err, result) {
+			this.acsAppWriter.usersRemove(function(err, result) {
 				assert.ifError(err);
 				assert(result);
 				assert(result.body);

@@ -2,14 +2,20 @@ var assert = require('assert'),
 	testUtil = require('./testUtil'),
 	fs = require('fs');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSApp = require('../index'),
+	acsApp = new ACSApp(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	acsPhotoCount = 0,
@@ -45,7 +51,6 @@ describe('Photos Test', function() {
 			assert(result.body.response.users[0]);
 			assert.equal(result.body.response.users[0].username, acsUsername);
 			acsUserId = result.body.response.users[0].id;
-			assert(result.cookieString);
 			done();
 		});
 	});
@@ -64,10 +69,6 @@ describe('Photos Test', function() {
 			assert(result.body.response.users);
 			assert(result.body.response.users[0]);
 			assert.equal(result.body.response.users[0].username, acsUsername);
-			assert(result.cookieString);
-			assert.equal(typeof result.cookieString, 'string');
-			acsApp.setSessionByCookieString(result.cookieString);
-			assert.equal(result.cookieString, acsApp.appOptions.cookieString);
 			done();
 		});
 	});
@@ -185,10 +186,10 @@ describe('Photos Test', function() {
 	describe('Negative test', function() {
 
 		it('create without passing photo field', function(done) {
-			acsApp.photosCreate({}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Photo parameter required for photo upload');
+			acsApp.photosCreate({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Photo parameter required for photo upload');
 				done();
 			});
 		});
@@ -196,10 +197,10 @@ describe('Photos Test', function() {
 		it('create using invalid photo field id', function(done) {
 			acsApp.photosCreate({
 				photo: __dirname + '/files/invalidphotos.jpg'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid photo file attachment');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid photo file attachment');
 				done();
 			});
 		});
@@ -207,10 +208,10 @@ describe('Photos Test', function() {
 		it('show using invalid photo id', function(done) {
 			acsApp.photosShow({
 				photo_id: 'invalid'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid photo id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid photo id');
 				done();
 			});
 		});
@@ -218,10 +219,10 @@ describe('Photos Test', function() {
 		it('update using invalid photo id', function(done) {
 			acsApp.photosUpdate({
 				photo_id: 'invalid'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid photo id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid photo id');
 				done();
 			});
 		});
@@ -229,10 +230,10 @@ describe('Photos Test', function() {
 		it('delete using invalid photo id', function(done) {
 			acsApp.photosRemove({
 				photo_id: 'invalid'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid photo id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid photo id');
 				done();
 			});
 		});

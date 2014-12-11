@@ -2,19 +2,24 @@ var assert = require('assert'),
 	fs = require('fs'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSApp = require('../index'),
+	acsApp = new ACSApp(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	event_id = null,
 	photo_id = null;
-
 
 describe('Events Test', function() {
 	this.timeout(50000);
@@ -40,15 +45,20 @@ describe('Events Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 	});
 
 	describe('positive event tests', function() {
-
 		it('Should create an event(start_time: new Date()) successfully - create', function(done) {
 			acsApp.eventsCreate({
 				name: 'Test - events',
@@ -214,15 +224,13 @@ describe('Events Test', function() {
 
 	});
 
-	describe('positive event tests', function() {
+	describe('negative event tests', function() {
 		it('Should fail to create an event without start_time - create', function(done) {
 			acsApp.eventsCreate({
 				name: 'Test - events'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -230,12 +238,10 @@ describe('Events Test', function() {
 		it('Should fail to create an event without name - create', function(done) {
 			acsApp.eventsCreate({
 				start_time: new Date()
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Failed to create event: Validation failed - Name can\'t be blank.');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Failed to create event: Validation failed - Name can\'t be blank.');
 				done();
 			});
 		});
@@ -244,12 +250,10 @@ describe('Events Test', function() {
 			acsApp.eventsCreate({
 				name: 'Test - events',
 				start_time: '2011'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid calender schedule  invalid date');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid calender schedule  invalid date');
 				done();
 			});
 		});
@@ -260,12 +264,10 @@ describe('Events Test', function() {
 				name: event_name,
 				start_time: new Date(),
 				duration: 6
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid event id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid event id');
 				done();
 			});
 		});
@@ -275,12 +277,10 @@ describe('Events Test', function() {
 				event_id: event_id,
 				start_time: '2011',
 				duration: 8
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid calender schedule  invalid date');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid calender schedule  invalid date');
 				done();
 			});
 		});
@@ -290,12 +290,10 @@ describe('Events Test', function() {
 				event_id: event_id,
 				start_time: '2011',
 				duration: '8'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid calender schedule  invalid date');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid calender schedule  invalid date');
 				done();
 			});
 		});
@@ -316,12 +314,10 @@ describe('Events Test', function() {
 		});
 
 		it('Should delete a batch of events successfully', function(done) {
-			acsApp.eventsBatchDelete({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 403);
-				assert.equal(result.body.meta.message, 'You are not authorized to perform this action.');
+			acsApp.eventsBatchDelete({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 403);
+				assert.equal(err.body.meta.message, 'You are not authorized to perform this action.');
 				done();
 			});
 		});
