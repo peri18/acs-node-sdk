@@ -1,4 +1,4 @@
-var ACSApp = require('../index'),
+var ACSNode = require('../index'),
 	crypto = require('crypto'),
 	testACSApp = null;
 
@@ -78,7 +78,7 @@ function getTestACSApp() {
 		console.log('ACS Entry Point: %s', acsEntryPoint);
 		console.log('MD5 of ACS_APPKEY: %s', md5(acsKey));
 
-		testACSApp = new ACSApp(acsKey, {
+		testACSApp = new ACSNode(acsKey, {
 			apiEntryPoint: acsEntryPoint,
 			prettyJson: true
 		});

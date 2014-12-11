@@ -11,8 +11,8 @@ if (!acsKey) {
 console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var ACSApp = require('../index'),
-	acsApp = new ACSApp(acsKey, {
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
 		apiEntryPoint: acsEntryPoint,
 		prettyJson: true
 	}),

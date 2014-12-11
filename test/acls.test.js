@@ -1,4 +1,4 @@
-var ACSApp = require('../index'),
+var ACSNode = require('../index'),
 	assert = require('assert'),
 	testUtil = require('./testUtil');
 
@@ -26,17 +26,17 @@ var acsUsername = null,
 
 describe('ACLs Test', function() {
 	before(function(done) {
-		this.acsAppGeneral = new ACSApp(acsKey, {
+		this.acsAppGeneral = new ACSNode(acsKey, {
 			apiEntryPoint: acsEntryPoint,
 			prettyJson: true
 		});
 
-		this.acsAppReader = new ACSApp(acsKey, {
+		this.acsAppReader = new ACSNode(acsKey, {
 			apiEntryPoint: acsEntryPoint,
 			prettyJson: true
 		});
 
-		this.acsAppWriter = new ACSApp(acsKey, {
+		this.acsAppWriter = new ACSNode(acsKey, {
 			apiEntryPoint: acsEntryPoint,
 			prettyJson: true
 		});

@@ -12,7 +12,7 @@ if (!acsKey) {
 console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var ACSApp = require('../index');
+var ACSNode = require('../index');
 
 describe('Code Coverage Test', function() {
 	describe('.acsError', function() {
@@ -43,7 +43,7 @@ describe('Code Coverage Test', function() {
 
 	describe('.acsApp', function() {
 		it('Should list ACS objects correctly', function(done) {
-			var acsObjects = ACSApp.getACSObjects();
+			var acsObjects = ACSNode.getACSObjects();
 			assert(acsObjects);
 			assert(acsObjects.ACLs);
 			assert(acsObjects.Chats);
@@ -71,22 +71,22 @@ describe('Code Coverage Test', function() {
 			done();
 		});
 
-		it('Should not create ACSApp instance if parameters are wrong', function(done) {
+		it('Should not create ACSNode instance if parameters are wrong', function(done) {
 			var testACSApp = null;
 			try {
-				testACSApp = require('../index')();
+				testACSApp = new ACSNode();
 			} catch (e) {
 				assert(e);
 				assert.equal(e.errorCode, 1001);
 			}
 			try {
-				testACSApp = require('../index')(true);
+				testACSApp = new ACSNode(true);
 			} catch (e) {
 				assert(e);
 				assert.equal(e.errorCode, 1002);
 			}
 			try {
-				testACSApp = require('../index')('ACSKey', 'wrong_parameter');
+				testACSApp = new ACSNode('ACSKey', 'wrong_parameter');
 			} catch (e) {
 				assert(e);
 				assert.equal(e.errorCode, 1002);
@@ -94,10 +94,10 @@ describe('Code Coverage Test', function() {
 			done();
 		});
 
-		it('Should create ACSApp with customized entry point successfully', function(done) {
+		it('Should create ACSNode with customized entry point successfully', function(done) {
 			var acsKey = 'ACSKey';
 			var testEntryPoint = 'https://api-test.cloud.appcelerator.com';
-			var testACSApp = new ACSApp(acsKey, {
+			var testACSApp = new ACSNode(acsKey, {
 				apiEntryPoint: testEntryPoint
 			});
 			assert(testACSApp);
@@ -107,10 +107,10 @@ describe('Code Coverage Test', function() {
 			done();
 		});
 
-		it('Should create ACSApp with default entry point successfully', function(done) {
+		it('Should create ACSNode with default entry point successfully', function(done) {
 			var acsKey = 'ACSKey';
 			var defaultEntryPoint = 'https://api.cloud.appcelerator.com';
-			var testACSApp = new ACSApp(acsKey, {});
+			var testACSApp = new ACSNode(acsKey, {});
 			assert(testACSApp);
 			assert.equal(testACSApp.appKey, acsKey);
 			assert(testACSApp.appOptions);
