@@ -1,14 +1,20 @@
 var assert = require('assert'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	name = 'SN',
@@ -39,9 +45,15 @@ describe('Keyvalues Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 	});
@@ -110,12 +122,9 @@ describe('Keyvalues Test', function() {
 		it('Should get a keyvalue successfully', function(done) {
 			acsApp.keyValuesGet({
 				name: name
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -213,12 +222,10 @@ describe('Keyvalues Test', function() {
 		it('Should fail to create a keyvalue without value', function(done) {
 			acsApp.keyValuesSet({
 				name: name
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Key-value value required');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Key-value value required');
 				done();
 			});
 		});
@@ -226,12 +233,10 @@ describe('Keyvalues Test', function() {
 		it('Should fail to create a keyvalue without name', function(done) {
 			acsApp.keyValuesSet({
 				value: value
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Key-value name required');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Key-value name required');
 				done();
 			});
 		});

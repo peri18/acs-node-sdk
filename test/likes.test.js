@@ -1,14 +1,20 @@
 var assert = require('assert'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	event_id = null,
@@ -41,9 +47,15 @@ describe('Likes Test', function() {
 				assert.equal(result.body.meta.method_name, 'createUser');
 				var obj = result.body.response.users[0];
 				assert.equal(obj.username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 
@@ -197,12 +209,10 @@ describe('Likes Test', function() {
 		it('Should fail to delete an unlike(custom object) successfully', function(done) {
 			acsApp.likesDelete({
 				custom_object_id: custom_object_id
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid CustomObject id or current user hasn\'t liked it');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid CustomObject id or current user hasn\'t liked it');
 				done();
 			});
 		});
@@ -210,12 +220,10 @@ describe('Likes Test', function() {
 
 	describe('negative likes tests', function() {
 		it('Should fail to create a like successfully', function(done) {
-			acsApp.likesCreate({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid like type');
+			acsApp.likesCreate({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid like type');
 				done();
 			});
 		});
@@ -223,19 +231,16 @@ describe('Likes Test', function() {
 		it('Should fail to delete a no-existing like(custom object) successfully', function(done) {
 			acsApp.likesDelete({
 				custom_object_id: '545980ebdda095222c000004'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'custom_object not found');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'custom_object not found');
 				done();
 			});
 		});
 	});
 
 	describe('cleanup', function() {
-
 		it('Should delete current user successfully', function(done) {
 			acsApp.usersRemove(function(err, result) {
 				assert.ifError(err);

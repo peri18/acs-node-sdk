@@ -23,6 +23,9 @@
 	}, {
 		"name": "Kefeng Zhang",
 		"email": "kzhang@appcelerator.com"
+	}, {
+		"name": "Chris Barber",
+		"email": "cbarber@appcelerator.com"
 	}],
 	"repository": {
 		"type": "git",
@@ -33,7 +36,7 @@
 	},
 	"dependencies": {
 		"lodash": "^2.4.1",
-		"request": "^2.47.0",
+		"request": "^2.51.0",
 		"tough-cookie": "^0.12.1"
 	},
 	"devDependencies": {

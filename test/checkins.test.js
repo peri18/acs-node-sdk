@@ -2,21 +2,26 @@ var assert = require('assert'),
 	fs = require('fs'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	event_id = null,
 	checkin_id = null,
 	checkin_id2 = null,
 	message = 'Test - checkins(event)';
-
 
 describe('Checkins Test', function() {
 	this.timeout(50000);
@@ -44,9 +49,15 @@ describe('Checkins Test', function() {
 				assert(result.body.response.users);
 				assert(result.body.response.users[0]);
 				assert.equal(result.body.response.users[0].username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 
@@ -69,7 +80,6 @@ describe('Checkins Test', function() {
 	});
 
 	describe('positive checkin tests', function() {
-
 		it('Should create a checkin successfully - create', function(done) {
 			acsApp.checkinsCreate({
 				name: 'Test - checkins',
@@ -238,17 +248,12 @@ describe('Checkins Test', function() {
 	});
 
 	describe('negative checkin tests', function() {
-
 		it('Should fail to create a checkin without both place_id and event_id - create', function(done) {
 			acsApp.checkinsCreate({
 				name: 'Test - checkins'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'createCheckin');
-				assert.equal(result.body.meta.message, 'Failed to create a checkin: Validation failed - Place or event id is required.');
+			}, function (err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -257,13 +262,9 @@ describe('Checkins Test', function() {
 			acsApp.checkinsCreate({
 				name: 'Test - checkins',
 				event_id: '5459d218dda09549a3000083'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'createCheckin');
-				assert.equal(result.body.meta.message, 'Invalid event id');
+			}, function (err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -272,55 +273,39 @@ describe('Checkins Test', function() {
 			acsApp.checkinsCreate({
 				name: 'Test - checkins',
 				place_id: '5459d218dda09549a3000083'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'createCheckin');
-				assert.equal(result.body.meta.message, 'Invalid place id');
+			}, function (err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
 
 		it('Should fail to delete a checkin without checkin_id - delete', function(done) {
-			acsApp.checkinsDelete({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid checkin id');
+			acsApp.checkinsDelete({}, function (err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
 
 		it('Should fail to show a checkin without checkin_id - show', function(done) {
-			acsApp.checkinsShow({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid checkin id');
+			acsApp.checkinsShow({}, function (err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
 
 		it('Should fail to update a checkin without checkin_id - update', function(done) {
-			acsApp.checkinsUpdate({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid checkin id');
+			acsApp.checkinsUpdate({}, function (err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
-
-
 	});
 
 	describe('cleanup', function() {
-
 		it('Should delete a checkin successfully - delete', function(done) {
 			acsApp.checkinsDelete({
 				checkin_id: checkin_id
@@ -339,12 +324,9 @@ describe('Checkins Test', function() {
 				where: {
 					'message': 'Test - new checkins(event)'
 				}
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 403);
-				assert.equal(result.body.meta.message, 'You are not authorized to perform this action.');
+			}, function (err) {
+				assert(err);
+				assert.equal(err.statusCode, 403);
 				done();
 			});
 		});

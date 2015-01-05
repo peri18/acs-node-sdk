@@ -1,20 +1,25 @@
 var assert = require('assert'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	event_id = null,
 	status_id,
 	message = 'Test - statuses';
-
 
 describe('Statuses Test', function() {
 	this.timeout(50000);
@@ -42,9 +47,15 @@ describe('Statuses Test', function() {
 				assert(result.body.response.users);
 				assert(result.body.response.users[0]);
 				assert.equal(result.body.response.users[0].username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 
@@ -175,15 +186,12 @@ describe('Statuses Test', function() {
 	});
 
 	describe('negative statuses tests', function() {
-
 		it('Should fail to create a status without message', function(done) {
 			acsApp.statusesCreate({
 				name: 'Test - status'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -191,22 +199,18 @@ describe('Statuses Test', function() {
 		it('Should fail to show a status with invalid status_id', function(done) {
 			acsApp.statusesShow({
 				status_id: '545c7a36dda095cba2000127'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
 
 		it('Should fail to show a status without status_id', function(done) {
-			acsApp.statusesShow({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid status id');
+			acsApp.statusesShow({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid status id');
 				done();
 			});
 		});
@@ -214,12 +218,10 @@ describe('Statuses Test', function() {
 		it('Should fail to update a status without status_id', function(done) {
 			acsApp.statusesUpdate({
 				message: message
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid status id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid status id');
 				done();
 			});
 		});
@@ -227,30 +229,25 @@ describe('Statuses Test', function() {
 		it('Should fail to delete a status with invalid status_id', function(done) {
 			acsApp.statusesDelete({
 				status_id: '545c7a36dda095cba2000127'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid status id');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid status id');
 				done();
 			});
 		});
 
-		it('Should fail to delete a status without  status_id', function(done) {
-			acsApp.statusesDelete({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Invalid status id');
+		it('Should fail to delete a status without status_id', function(done) {
+			acsApp.statusesDelete({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				assert.equal(err.body.meta.message, 'Invalid status id');
 				done();
 			});
 		});
 	});
 
 	describe('cleanup', function() {
-
 		it('Should delete a status successfully', function(done) {
 			acsApp.statusesDelete({
 				status_id: status_id
@@ -265,12 +262,10 @@ describe('Statuses Test', function() {
 		});
 
 		it('Should fail to delete a batch of statuses', function(done) {
-			acsApp.statusesBatchDelete({}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 403);
-				assert.equal(result.body.meta.message, 'You are not authorized to perform this action.');
+			acsApp.statusesBatchDelete({}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 403);
+				assert.equal(err.body.meta.message, 'You are not authorized to perform this action.');
 				done();
 			});
 		});

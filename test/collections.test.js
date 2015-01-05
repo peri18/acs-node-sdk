@@ -2,14 +2,20 @@ var assert = require('assert'),
 	testUtil = require('./testUtil'),
 	fs = require('fs');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	acsUserId = null,
@@ -46,7 +52,6 @@ describe('Collections Test', function() {
 			assert(result.body.response.users[0]);
 			assert.equal(result.body.response.users[0].username, acsUsername);
 			acsUserId = result.body.response.users[0].id;
-			assert(result.cookieString);
 			done();
 		});
 	});
@@ -65,10 +70,6 @@ describe('Collections Test', function() {
 			assert(result.body.response.users);
 			assert(result.body.response.users[0]);
 			assert.equal(result.body.response.users[0].username, acsUsername);
-			assert(result.cookieString);
-			assert.equal(typeof result.cookieString, 'string');
-			acsApp.setSessionByCookieString(result.cookieString);
-			assert.equal(result.cookieString, acsApp.appOptions.cookieString);
 			done();
 		});
 	});

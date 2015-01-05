@@ -1,8 +1,20 @@
 var assert = require('assert'),
-	testUtil = require('./testUtil'),
-	u = require('../lib/util');
+	testUtil = require('./testUtil');
 
-var acsApp = testUtil.getTestACSApp(),
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
+var acsKey = process.env.ACS_APPKEY;
+if (!acsKey) {
+	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
+	process.exit(1);
+}
+console.log('ACS Entry Point: %s', acsEntryPoint);
+console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
+
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsUserId,
 	acsPassword = 'cocoafish',
@@ -16,10 +28,8 @@ var acsApp = testUtil.getTestACSApp(),
 		sound: 'default'
 	};
 
-
 describe('Push Notifications and Logs Test', function() {
 	before(function(done) {
-		acsApp.clearSession();
 		testUtil.generateUsername(function(username) {
 			acsUsername = username;
 			acsSubscriptionChannel1 = acsUsername + '_test_channel_1';
@@ -50,9 +60,15 @@ describe('Push Notifications and Logs Test', function() {
 				assert.equal(result.body.response.users[0].username, acsUsername);
 				assert(result.body.response.users[0].id);
 				acsUserId = result.body.response.users[0].id;
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
 			});
 		});
 	});
@@ -314,7 +330,7 @@ describe('Push Notifications and Logs Test', function() {
 				assert.equal(result.body.meta.method_name, 'queryPushChannels');
 				assert(result.body.response);
 				assert(result.body.response.push_channels);
-				assert(u.inArray(acsSubscriptionChannel1, result.body.response.push_channels));
+				assert(result.body.response.push_channels.indexOf(acsSubscriptionChannel1) !== -1);
 				done();
 			});
 		});
@@ -332,7 +348,7 @@ describe('Push Notifications and Logs Test', function() {
 				assert.equal(result.body.meta.method_name, 'showPushChannels');
 				assert(result.body.response);
 				assert(result.body.response.push_channels);
-				assert(u.inArray(acsSubscriptionChannel1, result.body.response.push_channels));
+				assert(result.body.response.push_channels.indexOf(acsSubscriptionChannel1) !== -1);
 				done();
 			});
 		});
@@ -384,7 +400,7 @@ describe('Push Notifications and Logs Test', function() {
 				assert.equal(result.body.meta.method_name, 'queryPushChannels');
 				assert(result.body.response);
 				assert(result.body.response.push_channels);
-				assert(u.inArray(acsSubscriptionChannel1, result.body.response.push_channels));
+				assert(result.body.response.push_channels.indexOf(acsSubscriptionChannel1) !== -1);
 				done();
 			});
 		});
@@ -474,6 +490,7 @@ describe('Push Notifications and Logs Test', function() {
 				done();
 			});
 		});
+
 	});
 
 	describe('.deleteUser', function() {

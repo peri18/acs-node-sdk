@@ -1,19 +1,42 @@
 var assert = require('assert'),
 	testUtil = require('./testUtil');
 
-var acsApp = testUtil.getTestACSApp(),
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
+var acsKey = process.env.ACS_APPKEY;
+if (!acsKey) {
+	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
+	process.exit(1);
+}
+console.log('ACS Entry Point: %s', acsEntryPoint);
+console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
+
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
+	acsAppManualSession = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true,
+		autoSessionManagement: false
+	}),
 	acsUsername = null,
+	acsUsernameManualSession = null,
+	manualSessionCookieString = null,
 	acsPassword = 'cocoafish',
 	acsUserCount = 0;
 
-
 describe('Users Test', function() {
 	before(function(done) {
-		acsApp.clearSession();
 		testUtil.generateUsername(function(username) {
 			acsUsername = username;
 			console.log('\tGenerated acs user: %s', acsUsername);
-			done();
+
+			testUtil.generateUsername(function(username) {
+				acsUsernameManualSession = username;
+				console.log('\tGenerated acs user for manual session tests: %s', acsUsernameManualSession);
+				done();
+			});
 		});
 	});
 
@@ -31,8 +54,8 @@ describe('Users Test', function() {
 				assert.equal(result.body.meta.method_name, 'queryUsers');
 				assert(result.body.response);
 				assert(result.body.response.users);
-				acsUserCount = result.body.response.users.length;
-				assert.equal(typeof acsUserCount, 'number');
+				assert(result.body.response.users.length >= 0);
+				assert(result.body.response.users.length <= 100);
 				done();
 			});
 		});
@@ -48,6 +71,7 @@ describe('Users Test', function() {
 				// assert.equal(result.body.meta.method_name, 'countUser');
 				assert.equal(result.body.meta.method_name, 'usersCount');
 				assert(result.body.meta.count || (result.body.meta.count === 0));
+				acsUserCount = result.body.meta.count;
 				console.log('\tCurrent users count: %s', result.body.meta.count);
 				assert.equal(result.body.meta.count, acsUserCount);
 				done();
@@ -72,7 +96,6 @@ describe('Users Test', function() {
 				assert(result.body.response.users);
 				assert(result.body.response.users[0]);
 				assert.equal(result.body.response.users[0].username, acsUsername);
-				assert(result.cookieString);
 				done();
 			});
 		});
@@ -132,10 +155,6 @@ describe('Users Test', function() {
 				assert(result.body.response.users);
 				assert(result.body.response.users[0]);
 				assert.equal(result.body.response.users[0].username, acsUsername);
-				assert(result.cookieString);
-				assert.equal(typeof result.cookieString, 'string');
-				acsApp.setSessionByCookieString(result.cookieString);
-				assert.equal(result.cookieString, acsApp.appOptions.cookieString);
 				done();
 			});
 		});
@@ -236,6 +255,106 @@ describe('Users Test', function() {
 					done();
 				});
 			}, 2000);
+		});
+	});
+
+	describe('Manual Session Manamement', function () {
+		it('Should create user successfully', function(done) {
+			this.timeout(20000);
+			acsAppManualSession.usersCreate({
+				username: acsUsernameManualSession,
+				password: acsPassword,
+				password_confirmation: acsPassword
+			}, function(err, result) {
+				assert.ifError(err);
+				assert(result.body);
+				assert(result.body.meta);
+				assert.equal(result.body.meta.code, 200);
+				assert.equal(result.body.meta.method_name, 'createUser');
+				assert(result.body.response);
+				assert(result.body.response.users);
+				assert(result.body.response.users[0]);
+				assert.equal(result.body.response.users[0].username, acsUsernameManualSession);
+				done();
+			});
+		});
+
+		it('Newly created user should be able to login successfully', function(done) {
+			this.timeout(20000);
+			acsAppManualSession.usersLogin({
+				login: acsUsernameManualSession,
+				password: acsPassword
+			}, function(err, result) {
+				assert.ifError(err);
+				assert(result.body);
+				assert(result.body.meta);
+				assert.equal(result.body.meta.code, 200);
+				assert.equal(result.body.meta.method_name, 'loginUser');
+				assert(result.body.response);
+				assert(result.body.response.users);
+				assert(result.body.response.users[0]);
+				assert.equal(result.body.response.users[0].username, acsUsernameManualSession);
+				acsAppManualSession.sessionCookieString = result.cookieString;
+				manualSessionCookieString = result.cookieString;
+				done();
+			});
+		});
+
+		it('Should create a keyvalue successfully', function(done) {
+			acsAppManualSession.keyValuesSet({
+				name: 'foo',
+				value: 'bar'
+			}, function(err, result) {
+				assert.ifError(err);
+				assert(result.body);
+				assert(result.body.meta);
+				assert.equal(result.body.meta.code, 200);
+				assert.equal(result.body.meta.method_name, 'setKeyvalue');
+				done();
+			});
+		});
+
+		it('Should delete a keyvalue successfully', function(done) {
+			acsAppManualSession.keyValuesDelete({
+				name: 'foo'
+			}, function(err, result) {
+				assert.ifError(err);
+				assert(result.body);
+				assert(result.body.meta);
+				assert.equal(result.body.meta.code, 200);
+				assert.equal(result.body.meta.method_name, 'deleteKeyvalue');
+				done();
+			});
+		});
+
+		it('Should nullify session', function(done) {
+			acsAppManualSession.sessionCookieString = null;
+			done();
+		});
+
+		it('Should fail to create a keyvalue', function(done) {
+			acsAppManualSession.keyValuesSet({
+				name: 'foo',
+				value: 'bar'
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
+				done();
+			});
+		});
+
+		it('Should delete current user successfully', function(done) {
+			this.timeout(20000);
+			acsAppManualSession.sessionCookieString = manualSessionCookieString;
+			acsAppManualSession.usersRemove(function(err, result) {
+				assert.ifError(err);
+				assert(result);
+				assert(result.body);
+				assert(result.body.meta);
+				assert.equal(result.body.meta.code, 200);
+				assert.equal(result.body.meta.method_name, 'deleteUser');
+				done();
+			});
 		});
 	});
 });

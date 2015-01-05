@@ -2,14 +2,20 @@ var assert = require('assert'),
 	fs = require('fs'),
 	testUtil = require('./testUtil');
 
+var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
 var acsKey = process.env.ACS_APPKEY;
 if (!acsKey) {
 	console.error('Please create an ACS app and assign ACS_APPKEY in environment vars.');
 	process.exit(1);
 }
+console.log('ACS Entry Point: %s', acsEntryPoint);
 console.log('MD5 of ACS_APPKEY: %s', testUtil.md5(acsKey));
 
-var acsApp = require('../index')(acsKey),
+var ACSNode = require('../index'),
+	acsApp = new ACSNode(acsKey, {
+		apiEntryPoint: acsEntryPoint,
+		prettyJson: true
+	}),
 	acsUsername = null,
 	acsPassword = 'cocoafish',
 	classname = 'Beijing',
@@ -47,10 +53,16 @@ describe('Custom Objects Tests', function() {
 				assert(result.body.response.users);
 				assert(result.body.response.users[0]);
 				assert.equal(result.body.response.users[0].username, acsUsername);
-				assert(result.cookieString);
-				acsApp.setSessionByCookieString(result.cookieString);
-				done();
-			});
+
+				acsApp.usersLogin({
+					login: acsUsername,
+					password: acsPassword
+				}, function (err, result) {
+					assert.ifError(err);
+					assert(result);
+					done();
+				});
+			}.bind(this));
 		});
 	});
 
@@ -226,11 +238,9 @@ describe('Custom Objects Tests', function() {
 			acsApp.customObjectsUpdate({
 				id: obj_id,
 				classname: 'space'
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -266,11 +276,9 @@ describe('Custom Objects Tests', function() {
 		it('Should fail to batch delete custom objects', function(done) {
 			acsApp.customObjectsBatchDelete({
 				classname: classname
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 403);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 403);
 				done();
 			});
 		});
@@ -278,12 +286,9 @@ describe('Custom Objects Tests', function() {
 		it('Should fail to drop custom object collections', function(done) {
 			acsApp.customObjectsAdminDropCollection({
 				classname: classname
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.method_name, 'dropCollection');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -294,12 +299,9 @@ describe('Custom Objects Tests', function() {
 		it('Should fail to create a custom object without fields', function(done) {
 			acsApp.customObjectsCreate({
 				classname: classname
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
-				assert.equal(result.body.meta.message, 'Missing fields');
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -308,7 +310,7 @@ describe('Custom Objects Tests', function() {
 			acsApp.customObjectsCreate({
 				fields: {'city':'beijing'}
 			}, function(err) {
-				assert.equal(err !== undefined, true);
+				assert(err);
 				assert.equal(err.message, 'Required parameter classname is missing.');
 				done();
 			});
@@ -318,11 +320,9 @@ describe('Custom Objects Tests', function() {
 			acsApp.customObjectsUpdate({
 				id: obj_id,
 				classname: classname
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -331,11 +331,9 @@ describe('Custom Objects Tests', function() {
 			acsApp.customObjectsShow({
 				id: '5457657cdda0954dfe000016',
 				classname: classname2
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -344,11 +342,9 @@ describe('Custom Objects Tests', function() {
 			acsApp.customObjectsShow({
 				ids: '5457657cdda0954dfe000016,5457657cdda0954dfe000017',
 				classname: classname2
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -357,13 +353,9 @@ describe('Custom Objects Tests', function() {
 			acsApp.customObjectsDelete({
 				classname: classname,
 				id: obj_id
-			}, function(err, result) {
-				assert.ifError(err);
-				assert.ifError(err);
-				assert(result);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
@@ -372,12 +364,9 @@ describe('Custom Objects Tests', function() {
 			acsApp.customObjectsDelete({
 				classname: 'space',
 				id: obj_id
-			}, function(err, result) {
-				assert.ifError(err);
-				assert(result);
-				assert(result.body);
-				assert(result.body.meta);
-				assert.equal(result.body.meta.code, 400);
+			}, function(err) {
+				assert(err);
+				assert.equal(err.statusCode, 400);
 				done();
 			});
 		});
