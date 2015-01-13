@@ -1,6 +1,6 @@
 var assert = require('assert'),
 	ACSNode = require('../index'),
-	request = require('request-ssl');
+	request = require('appc-request-ssl');
 
 describe('Security Test', function() {
 	this.timeout(10000);
