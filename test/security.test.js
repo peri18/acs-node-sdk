@@ -22,7 +22,7 @@ describe('Security Test', function() {
 
 	it('should validate DEFAULT_API_TEST_ENTRY_POINT',function(done){
 		if (process.env.TRAVIS) {
-			assert.equal(process.env.FINGERPRINT_TEST.replace(fingerprintRegex,'$1'), ACSNode.DEFAULT_API_ENTRY_POINT_FINGERPRINT);
+			assert.equal(process.env.FINGERPRINT_TEST.replace(fingerprintRegex,'$1'), ACSNode.DEFAULT_API_TEST_ENTRY_POINT_FINGERPRINT);
 			done();
 		} else {
 			request.getFingerprintForURL(ACSNode.DEFAULT_API_TEST_ENTRY_POINT, function(err,fingerprint){
