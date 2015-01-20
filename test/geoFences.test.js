@@ -1,5 +1,4 @@
 var assert = require('assert'),
-	fs = require('fs'),
 	testUtil = require('./testUtil');
 
 var acsEntryPoint = (process.env.ACS_ENTRYPOINT ? process.env.ACS_ENTRYPOINT : 'https://api.cloud.appcelerator.com');
